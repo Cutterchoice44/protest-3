@@ -8,15 +8,17 @@ const FALLBACK_ART = "https://i.imgur.com/qWOfxOS.png";
 // Replace only the profile-wrapper on errors
 function showNotFound() {
   const w = document.querySelector('.profile-wrapper');
-  if (w) w.innerHTML = `<p style="color:white;text-align:center;margin:2rem;">
-    Profile not found.
-  </p>`;
+  if (w) w.innerHTML = `
+    <p style="color:white;text-align:center;margin:2rem;">
+      Profile not found.
+    </p>`;
 }
 function showError() {
   const w = document.querySelector('.profile-wrapper');
-  if (w) w.innerHTML = `<p style="color:white;text-align:center;margin:2rem;">
-    Error loading profile.
-  </p>`;
+  if (w) w.innerHTML = `
+    <p style="color:white;text-align:center;margin:2rem;">
+      Error loading profile.
+    </p>`;
 }
 
 // Build a Google Calendar link
@@ -25,16 +27,21 @@ function createGoogleCalLink(title, startUtc, endUtc) {
   const fmt = dt => new Date(dt)
     .toISOString()
     .replace(/-|:|\.\d{3}/g, '');
-  return `https://www.google.com/calendar/render?action=TEMPLATE`
-       + `&text=${encodeURIComponent(title)}`
-       + `&dates=${fmt(startUtc)}/${fmt(endUtc)}`;
+  return [
+    "https://www.google.com/calendar/render?action=TEMPLATE",
+    "&text="   + encodeURIComponent(title),
+    "&dates="  + fmt(startUtc) + "/" + fmt(endUtc)
+  ].join("");
 }
 
 async function initPage() {
+  console.log("▶️ script_IND_DJ.js init");
   const params   = new URLSearchParams(window.location.search);
   const artistId = params.get("id");
-  if (!artistId) return showNotFound();
-
+  if (!artistId) {
+    console.warn("No ?id= in URL");
+    return showNotFound();
+  }
   try {
     // 1) Fetch the artist detail
     const res = await fetch(
@@ -45,19 +52,14 @@ async function initPage() {
       if (res.status === 404) return showNotFound();
       throw new Error(`Artist API ${res.status}`);
     }
-    const json = await res.json();
-    const artist = json.artist || json;
-    if (!artist) return showNotFound();
+    const payload = await res.json();
+    const artist  = payload.artist || payload;
+    console.log("🏷️ artist object:", artist);
 
-    // 2) Check for the WEBSITE tag
-    const rawTags = Array.isArray(artist.tags) ? artist.tags : [];
-    const tags = rawTags.map(t => {
-      if (typeof t === 'string') return t.toLowerCase();
-      if (t.slug) return t.slug.toLowerCase();
-      if (t.name) return t.name.toLowerCase();
-      return '';
-    });
-    if (!tags.includes('website')) {
+    // 2) Only load if tagged "website"
+    const tags = Array.isArray(artist.tags) ? artist.tags.map(t=>String(t).toLowerCase()) : [];
+    if (!tags.includes("website")) {
+      console.warn("Missing ‘website’ tag:", artist.tags);
       return showNotFound();
     }
 
@@ -66,28 +68,41 @@ async function initPage() {
 
     // 4) Description / Bio
     const bioEl = document.getElementById("dj-bio");
-    let desc = artist.description
-             || artist.bioHtml
-             || artist.bio
-             || "";
-    // If it's not HTML, wrap paragraphs
-    if (!/<[a-z][\s\S]*>/i.test(desc)) {
+    // Try all candidate fields in order
+    let desc = "";
+    const fields = [
+      "descriptionHtml",
+      "description",
+      "bioHtml",
+      "bio",
+      "aboutHtml",
+      "about"
+    ];
+    for (const f of fields) {
+      if (artist[f] && typeof artist[f] === "string" && artist[f].trim()) {
+        desc = artist[f];
+        console.log(`✔️ using ${f} for bio`);
+        break;
+      }
+    }
+    // Wrap plain-text paragraphs
+    if (desc && !/<[a-z][\s\S]*>/i.test(desc)) {
       desc = desc
         .split(/\r?\n+/)
         .map(p => `<p>${p}</p>`)
-        .join('');
+        .join("");
     }
-    bioEl.innerHTML = desc;
+    bioEl.innerHTML = desc || `<p>No bio available.</p>`;
 
     // 5) Artwork
     const artEl = document.getElementById("dj-artwork");
-    artEl.src = artist.logo?.["512x512"]
-             || artist.logo?.default
-             || artist.avatar
+    artEl.src = artist.logo?.["512x512"] 
+             || artist.logo?.default 
+             || artist.avatar 
              || FALLBACK_ART;
     artEl.alt = artist.name;
 
-    // 6) Social links (`socials` field)
+    // 6) Social links
     const sl = document.getElementById("social-links");
     sl.innerHTML = "";
     for (const [plat, url] of Object.entries(artist.socials || {})) {
@@ -103,9 +118,9 @@ async function initPage() {
       sl.appendChild(li);
     }
 
-    // 7) Next scheduled show → Calendar button
+    // 7) Next show → Calendar
     const now     = new Date().toISOString();
-    const oneYear = new Date(Date.now() + 365*24*60*60*1000).toISOString();
+    const oneYear = new Date(Date.now()+365*24*60*60*1000).toISOString();
     const schedRes = await fetch(
       `${BASE_URL}/station/${STATION_ID}/artists/${artistId}/schedule`
       + `?startDate=${now}&endDate=${oneYear}`,
@@ -128,32 +143,35 @@ async function initPage() {
       calBtn.style.display = "none";
     }
 
-    // 8) Mixcloud archive (per-artist localStorage)
+    // 8) Mixcloud archives (per-artist localStorage)
     const storageKey = `${artistId}-mixcloud-urls`;
     function loadShows() {
       const list = document.getElementById("mixes-list");
       list.innerHTML = "";
-      (JSON.parse(localStorage.getItem(storageKey))||[]).forEach(url => {
-        const div = document.createElement("div");
-        div.className = "mix-show";
-        div.innerHTML = `
-          <iframe
-            src="https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=1&feed=${encodeURIComponent(url)}"
-            allow="autoplay"></iframe>
-          <button data-url="${url}">Remove show</button>
-        `;
-        div.querySelector("button").onclick = () => {
-          const arr = JSON.parse(localStorage.getItem(storageKey))||[];
-          localStorage.setItem(
-            storageKey,
-            JSON.stringify(arr.filter(u => u !== url))
-          );
-          loadShows();
-        };
-        list.appendChild(div);
-      });
+      (JSON.parse(localStorage.getItem(storageKey))||[])
+        .forEach(url => {
+          const div = document.createElement("div");
+          div.className = "mix-show";
+          div.innerHTML = `
+            <iframe
+              src="https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=1&feed=${encodeURIComponent(url)}"
+              allow="autoplay"></iframe>
+            <button data-url="${url}">Remove show</button>
+          `;
+          div.querySelector("button").onclick = () => {
+            const arr = JSON.parse(localStorage.getItem(storageKey))||[];
+            localStorage.setItem(
+              storageKey,
+              JSON.stringify(arr.filter(u=>u!==url))
+            );
+            loadShows();
+          };
+          list.appendChild(div);
+        });
     }
     loadShows();
+
+    // 9) “Add Show” button
     document.getElementById("add-show-btn").onclick = () => {
       const pwd = prompt("Enter password to add a show:");
       if (pwd !== MIXCLOUD_PW) return alert("Incorrect password");
