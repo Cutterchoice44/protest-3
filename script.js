@@ -154,20 +154,23 @@ async function initPage() {
                    "hide_cover=1&light=1&feed=" +
                    encodeURIComponent(url);
       wrapper.appendChild(iframe);
+const btn = document.createElement("button");
+btn.textContent = "Remove show";
+btn.onclick = () => {
+  const pwd = prompt("Enter password to remove this show:");
+  if (pwd !== MIXCLOUD_PW) {
+    return alert("Incorrect password");
+  }
+  const arr = JSON.parse(localStorage.getItem(storageKey)) || [];
+  localStorage.setItem(
+    storageKey,
+    JSON.stringify(arr.filter(u => u !== url))
+  );
+  loadShows();
+};
+wrapper.appendChild(btn);
 
-      const btn = document.createElement("button");
-      btn.textContent = "Remove show";
-      btn.onclick = () => {
-        const arr = JSON.parse(localStorage.getItem(storageKey))||[];
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify(arr.filter(u=>u!==url))
-        );
-        loadShows();
-      };
-      wrapper.appendChild(btn);
-
-      listEl.appendChild(wrapper);
+listEl.appendChild(wrapper);
     });
   }
 
