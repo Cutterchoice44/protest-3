@@ -2,9 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <!-- Prevent caching so updates show immediately -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DJ Profile – Cutters Choice Radio</title>
-  <!-- external CSS -->
+
+  <!-- Global styles -->
+  <link rel="stylesheet" href="style.css">
+  <!-- Profile-specific styles -->
   <link rel="stylesheet" href="style-_IND_DJ.css">
 </head>
 <body>
@@ -26,20 +34,24 @@
             id="dj-artwork"
             src="https://i.imgur.com/qWOfxOS.png"
             alt="DJ Artwork Placeholder"
+            loading="lazy"
           />
         </div>
+
         <div class="info-block">
           <div class="socials-section">
-            <h2>Socials/Contact</h2>
+            <h2>Socials / Contact</h2>
             <ul id="social-links"></ul>
           </div>
+
           <div class="reminder-section">
             <h2>Get Reminded</h2>
             <div class="reminder-line"></div>
-            <a id="calendar-btn" href="#" target="_blank">
+            <a id="calendar-btn" href="#" target="_blank" rel="noopener">
               <img
                 src="https://i.imgur.com/3z7W5ln.png"
                 alt="Calendar icon"
+                loading="lazy"
               />
             </a>
           </div>
@@ -60,10 +72,10 @@
         </div>
       </section>
 
-    </div>
-  </div>
+    </div> <!-- /.container -->
+  </div> <!-- /.profile-wrapper -->
 
-  <!-- external JS -->
+  <!-- Profile script (reads ?id=, fetches data, populates page) -->
   <script src="script_IND_DJ.js" defer></script>
 </body>
 </html>
