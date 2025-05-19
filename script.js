@@ -127,14 +127,9 @@ async function initPage() {
       sl.appendChild(li);
     }
 
-    // Next show → Google Calendar
-// Next show → Google Calendar
-    // …after you’ve populated socials…  
-
-    // Next show → Google Calendar
+     // Next show → Google Calendar
     const calBtn = document.getElementById("calendar-btn");
-    // 1) make sure it’s visible by default
-    calBtn.style.display = "inline-flex";
+    calBtn.style.display = "inline-flex"; // or 'inline-block'
     calBtn.style.opacity = "1";
     calBtn.href = "#";
 
@@ -147,11 +142,11 @@ async function initPage() {
         { headers: { "x-api-key": API_KEY } }
       );
       if (!schedRes.ok) throw new Error(`Schedule API ${schedRes.status}`);
+
       const { schedules = [] } = await schedRes.json();
       console.log("Schedule data:", schedules);
 
       if (schedules.length) {
-        // 2) build the link if there *is* a show
         const { startDateUtc, endDateUtc } = schedules[0];
         calBtn.href = createGoogleCalLink(
           `DJ ${artist.name} Live Set`,
@@ -159,13 +154,11 @@ async function initPage() {
           endDateUtc
         );
       } else {
-        // 3) no show → grey out & disable
         calBtn.style.opacity = "0.4";
         calBtn.href = "#";
       }
     } catch (err) {
       console.error("Schedule fetch error:", err);
-      // on error, also grey out
       calBtn.style.opacity = "0.4";
       calBtn.href = "#";
     }
