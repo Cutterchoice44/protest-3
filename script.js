@@ -1,11 +1,27 @@
-// script.js
+// script_IND_DJ.js
 const API_KEY      = "pk_0b8abc6f834b444f949f727e88a728e0";
 const BASE_URL     = "https://api.radiocult.fm/api";
 const STATION_ID   = "cutters-choice-radio";
 const MIXCLOUD_PW  = "cutters44";
 const FALLBACK_ART = "https://i.imgur.com/qWOfxOS.png";
 
-// Build a Google Calendar link from UTC datetimes
+// Show “not found” and stop
+function showNotFound() {
+  document.body.innerHTML = `
+    <p style="color:white; text-align:center; margin-top:2rem;">
+      Profile not found.
+    </p>`;
+}
+
+// Show generic load error
+function showError() {
+  document.body.innerHTML = `
+    <p style="color:white; text-align:center; margin-top:2rem;">
+      Error loading profile.
+    </p>`;
+}
+
+// Build a Google Calendar link from two UTC datetimes
 function createGoogleCalLink(title, startUtc, endUtc) {
   if (!startUtc || !endUtc) return "#";
   const fmt = dt => new Date(dt)
@@ -17,54 +33,55 @@ function createGoogleCalLink(title, startUtc, endUtc) {
 }
 
 async function initPage() {
-  // 1) Grab the ?id= from URL
+  // 1) Read artist ID from URL
   const params   = new URLSearchParams(window.location.search);
   const artistId = params.get("id");
   if (!artistId) {
-    document.body.innerHTML = `
-      <p style="color:white;text-align:center;margin-top:2rem;">
-        Profile not found.
-      </p>`;
-    return;
+    return showNotFound();
   }
 
   try {
-    // 2) Fetch the artist by ID (station-scoped)
-    const resArtist = await fetch(
+    // 2) Fetch the artist record
+    const res = await fetch(
       `${BASE_URL}/station/${STATION_ID}/artists/${artistId}`,
       { headers: { "x-api-key": API_KEY } }
     );
-    if (!resArtist.ok) throw new Error(`Artist API returned ${resArtist.status}`);
-    const artist = await resArtist.json();
+    if (!res.ok) {
+      if (res.status === 404) return showNotFound();
+      throw new Error(`Artist API returned ${res.status}`);
+    }
+    const artist = await res.json();
 
-    // Only proceed if tagged “website”
-    const tags = Array.isArray(artist.tags)
-      ? artist.tags.map(t => t.toLowerCase())
-      : [];
+    // 3) Ensure “website” tag is present
+    const rawTags = Array.isArray(artist.tags) ? artist.tags : [];
+    const tags = rawTags.map(t => {
+      if (typeof t === "string")      return t.toLowerCase();
+      if (t.slug)                     return t.slug.toLowerCase();
+      if (t.name)                     return t.name.toLowerCase();
+                                       return "";
+    });
     if (!tags.includes("website")) {
-      document.body.innerHTML = `
-        <p style="color:white;text-align:center;margin-top:2rem;">
-          Profile not available.
-        </p>`;
-      return;
+      return showNotFound();
     }
 
-    // 3) Populate name & bio
+    // 4) Populate Name & Bio
     document.getElementById("dj-name").textContent = artist.name;
     const bioEl = document.getElementById("dj-bio");
-    bioEl.innerHTML = artist.bioHtml
-      ? artist.bioHtml
-      : `<p>${artist.bio || ""}</p>`;
+    if (artist.bioHtml) {
+      bioEl.innerHTML = artist.bioHtml;
+    } else {
+      bioEl.innerHTML = `<p>${artist.bio || ""}</p>`;
+    }
 
-    // 4) Artwork
+    // 5) Artwork
     const artEl = document.getElementById("dj-artwork");
     artEl.src = artist.logo?.["512x512"]
-      || artist.logo?.default
-      || artist.avatar
-      || FALLBACK_ART;
+             || artist.logo?.default
+             || artist.avatar
+             || FALLBACK_ART;
     artEl.alt = artist.name;
 
-    // 5) Social links
+    // 6) Social links
     const sl = document.getElementById("social-links");
     sl.innerHTML = "";
     for (const [plat, url] of Object.entries(artist.socialLinks || {})) {
@@ -77,17 +94,17 @@ async function initPage() {
       sl.appendChild(li);
     }
 
-    // 6) Next show → calendar button
+    // 7) Next show → calendar button
     const now     = new Date().toISOString();
     const oneYear = new Date(Date.now() + 365*24*60*60*1000).toISOString();
-    const resSched = await fetch(
+    const schedRes = await fetch(
       `${BASE_URL}/station/${STATION_ID}/artists/${artistId}/schedule`
       + `?startDate=${now}&endDate=${oneYear}`,
       { headers: { "x-api-key": API_KEY } }
     );
     const calBtn = document.getElementById("calendar-btn");
-    if (resSched.ok) {
-      const { schedules = [] } = await resSched.json();
+    if (schedRes.ok) {
+      const { schedules = [] } = await schedRes.json();
       if (schedules.length) {
         const { startDateUtc, endDateUtc } = schedules[0];
         calBtn.href = createGoogleCalLink(
@@ -102,19 +119,17 @@ async function initPage() {
       calBtn.style.display = "none";
     }
 
-    // 7) Mixcloud archives (per-artist localStorage)
+    // 8) Mixcloud archives (per-artist localStorage)
     const storageKey = `${artistId}-mixcloud-urls`;
-    const loadShows = () => {
+    function loadShows() {
       const list = document.getElementById("mixes-list");
       list.innerHTML = "";
-      (JSON.parse(localStorage.getItem(storageKey)) || [])
-      .forEach(url => {
+      (JSON.parse(localStorage.getItem(storageKey)) || []).forEach(url => {
         const div = document.createElement("div");
         div.className = "mix-show";
         div.innerHTML = `
           <iframe
-            src="https://www.mixcloud.com/widget/iframe/
-                  ?hide_cover=1&light=1&feed=${encodeURIComponent(url)}"
+            src="https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=1&feed=${encodeURIComponent(url)}"
             allow="autoplay"></iframe>
           <button data-url="${url}">Remove show</button>
         `;
@@ -128,27 +143,26 @@ async function initPage() {
         };
         list.appendChild(div);
       });
-    };
+    }
     loadShows();
 
+    // Add-show button
     document.getElementById("add-show-btn").onclick = () => {
       const pwd = prompt("Enter password to add a show:");
       if (pwd !== MIXCLOUD_PW) return alert("Incorrect password");
-      const url = document.getElementById("mixcloud-url-input").value.trim();
+      const input = document.getElementById("mixcloud-url-input");
+      const url   = input.value.trim();
       if (!url) return;
       const arr = JSON.parse(localStorage.getItem(storageKey)) || [];
       arr.push(url);
       localStorage.setItem(storageKey, JSON.stringify(arr));
-      document.getElementById("mixcloud-url-input").value = "";
+      input.value = "";
       loadShows();
     };
 
   } catch (err) {
     console.error("Profile load error:", err);
-    document.body.innerHTML = `
-      <p style="color:white;text-align:center;margin-top:2rem;">
-        Error loading profile.
-      </p>`;
+    showError();
   }
 }
 
