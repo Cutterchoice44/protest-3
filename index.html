@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DJ Profile – Cutters Choice Radio</title>
+  <style>
+    :root {
+      --teal: #5A8785;
+      --dark: #000;
+      --light: #fafafa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--dark);
+      color: var(--light);
+      font-family: Arial, sans-serif;
+    }
+    .profile-wrapper {
+      margin: 20px;
+      border: 2px solid var(--teal);
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+    }
+    /* BIO */
+    .bio-section {
+      padding: 20px;
+      border-right: 2px solid var(--teal);
+    }
+    .bio-section h1 {
+      font-size: 5rem;
+      text-transform: uppercase;
+      border-bottom: 2px solid var(--teal);
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+    }
+    .bio-section p {
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+    /* MIDDLE COLUMN */
+    .column-mid {
+      border-right: 2px solid var(--teal);
+      display: flex;
+      flex-direction: column;
+    }
+    .artwork-block {
+      padding: 20px;
+      border-bottom: 2px solid var(--teal);
+    }
+    .artwork-block img {
+      width: 100%;
+      display: block;
+      border: 2px solid var(--teal);
+    }
+    .info-block {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+    .socials-section h2,
+    .mixes-section h2 {
+      font-size: 2rem;
+      text-transform: uppercase;
+      border-bottom: 2px solid var(--teal);
+      padding-bottom: 5px;
+      margin-bottom: 10px;
+    }
+    .socials-section ul {
+      list-style: none;
+    }
+    .socials-section li {
+      margin: 5px 0;
+    }
+    .socials-section a {
+      color: var(--light);
+      text-decoration: none;
+    }
+    .reminder-section {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+    }
+    .reminder-line {
+      flex: 1;
+      border-bottom: 2px dashed var(--teal);
+      margin: 0 10px;
+    }
+    .reminder-section img {
+      width: 40px;
+      height: 40px;
+    }
+    /* RIGHT COLUMN */
+    .column-right {
+      display: flex;
+      flex-direction: column;
+    }
+    .mixes-section {
+      padding: 20px;
+    }
+    .mixes-list {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 20px;
+    }
+    .mix-show {
+      background: #111;
+      padding: 10px;
+      border: 2px solid var(--teal);
+      margin-bottom: 10px;
+    }
+    .mix-show iframe {
+      width: 100%;
+      height: 60px;
+      border: none;
+    }
+    .mix-show button {
+      background: none;
+      border: none;
+      color: var(--teal);
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+    .mix-input input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid var(--teal);
+      background: var(--dark);
+      color: var(--light);
+      font-size: 1rem;
+    }
+    .mix-input button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 12px;
+      background: var(--teal);
+      border: none;
+      color: var(--dark);
+      text-transform: uppercase;
+      font-size: 1rem;
+      cursor: pointer;
+    }

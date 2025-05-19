@@ -1,0 +1,37 @@
+  </style>
+</head>
+<body>
+  <div class="profile-wrapper">
+    <div class="container">
+      <section class="bio-section">
+        <h1 id="dj-name">Loading…</h1>
+        <div id="dj-bio"><p>Loading bio…</p></div>
+      </section>
+      <section class="column-mid">
+        <div class="artwork-block">
+          <img id="dj-artwork" src="https://i.imgur.com/qWOfxOS.png" alt="DJ artwork">
+        </div>
+        <div class="info-block">
+          <div class="socials-section">
+            <h2>Socials/Contact</h2>
+            <ul id="social-links"></ul>
+          </div>
+          <div class="reminder-section">
+            <h2>Get Reminded</h2>
+            <div class="reminder-line"></div>
+            <a id="calendar-btn" href="#" target="_blank">
+              <img src="https://i.imgur.com/3z7W5ln.png" alt="Calendar icon">
+            </a>
+          </div>
+        </div>
+      </section>
+      <section class="column-right mixes-section">
+        <h2>Mixes</h2>
+        <div class="mixes-list" id="mixes-list"></div>
+        <div class="mix-input">
+          <input type="text" id="mixcloud-url-input" placeholder="Paste Mixcloud URL here…">
+          <button id="add-show-btn">Add Show</button>
+        </div>
+      </section>
+    </div>
+  </div>
