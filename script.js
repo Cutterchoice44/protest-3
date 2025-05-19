@@ -21,7 +21,7 @@ function showError() {
     </p>`;
 }
 
-// Build a Google Calendar link from two UTC datetimes
+// Build a Google Calendar link
 function createGoogleCalLink(title, startUtc, endUtc) {
   if (!startUtc || !endUtc) return "#";
   const fmt = dt => new Date(dt)
@@ -33,15 +33,12 @@ function createGoogleCalLink(title, startUtc, endUtc) {
 }
 
 async function initPage() {
-  // 1) Read artist ID from URL
   const params   = new URLSearchParams(window.location.search);
   const artistId = params.get("id");
-  if (!artistId) {
-    return showNotFound();
-  }
+  if (!artistId) return showNotFound();
 
   try {
-    // 2) Fetch the artist record
+    // 1) Fetch artist record
     const res = await fetch(
       `${BASE_URL}/station/${STATION_ID}/artists/${artistId}`,
       { headers: { "x-api-key": API_KEY } }
@@ -50,30 +47,29 @@ async function initPage() {
       if (res.status === 404) return showNotFound();
       throw new Error(`Artist API returned ${res.status}`);
     }
-    const artist = await res.json();
+    const data = await res.json();
+    if (!data.success || !data.artist) return showNotFound();
+    const artist = data.artist;
 
-    // 3) Ensure “website” tag is present
-    const rawTags = Array.isArray(artist.tags) ? artist.tags : [];
-    const tags = rawTags.map(t => {
-      if (typeof t === "string")      return t.toLowerCase();
-      if (t.slug)                     return t.slug.toLowerCase();
-      if (t.name)                     return t.name.toLowerCase();
-                                       return "";
-    });
+    // 2) Only load if tagged "website"
+    const tags = Array.isArray(artist.tags)
+      ? artist.tags.map(t => String(t).toLowerCase())
+      : [];
     if (!tags.includes("website")) {
       return showNotFound();
     }
 
-    // 4) Populate Name & Bio
-    document.getElementById("dj-name").textContent = artist.name;
+    // 3) Populate Name & Bio
+    document.getElementById("dj-name").textContent = artist.name || "";
     const bioEl = document.getElementById("dj-bio");
-    if (artist.bioHtml) {
-      bioEl.innerHTML = artist.bioHtml;
+    if (artist.description && typeof artist.description === "object") {
+      // TipTap JSON content? Fallback to raw JSON string
+      bioEl.innerHTML = `<p>${JSON.stringify(artist.description)}</p>`;
     } else {
       bioEl.innerHTML = `<p>${artist.bio || ""}</p>`;
     }
 
-    // 5) Artwork
+    // 4) Artwork
     const artEl = document.getElementById("dj-artwork");
     artEl.src = artist.logo?.["512x512"]
              || artist.logo?.default
@@ -81,10 +77,10 @@ async function initPage() {
              || FALLBACK_ART;
     artEl.alt = artist.name;
 
-    // 6) Social links
+    // 5) Social links
     const sl = document.getElementById("social-links");
     sl.innerHTML = "";
-    for (const [plat, url] of Object.entries(artist.socialLinks || {})) {
+    for (const [plat, url] of Object.entries(artist.socials || {})) {
       if (!url) continue;
       const li = document.createElement("li");
       li.innerHTML = `
@@ -94,7 +90,7 @@ async function initPage() {
       sl.appendChild(li);
     }
 
-    // 7) Next show → calendar button
+    // 6) Next show → calendar button
     const now     = new Date().toISOString();
     const oneYear = new Date(Date.now() + 365*24*60*60*1000).toISOString();
     const schedRes = await fetch(
@@ -104,7 +100,8 @@ async function initPage() {
     );
     const calBtn = document.getElementById("calendar-btn");
     if (schedRes.ok) {
-      const { schedules = [] } = await schedRes.json();
+      const schedData = await schedRes.json();
+      const schedules = schedData.schedules || [];
       if (schedules.length) {
         const { startDateUtc, endDateUtc } = schedules[0];
         calBtn.href = createGoogleCalLink(
@@ -119,12 +116,13 @@ async function initPage() {
       calBtn.style.display = "none";
     }
 
-    // 8) Mixcloud archives (per-artist localStorage)
+    // 7) Mixcloud archives (per-artist localStorage)
     const storageKey = `${artistId}-mixcloud-urls`;
     function loadShows() {
       const list = document.getElementById("mixes-list");
       list.innerHTML = "";
-      (JSON.parse(localStorage.getItem(storageKey)) || []).forEach(url => {
+      (JSON.parse(localStorage.getItem(storageKey)) || [])
+      .forEach(url => {
         const div = document.createElement("div");
         div.className = "mix-show";
         div.innerHTML = `
