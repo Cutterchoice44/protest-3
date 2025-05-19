@@ -129,34 +129,47 @@ async function initPage() {
 
     // Next show → Google Calendar
 // Next show → Google Calendar
-const now     = new Date().toISOString();
-const oneYear = new Date(Date.now() + 365*24*60*60*1000).toISOString();
-const schedRes = await fetch(
-  `${BASE_URL}/station/${STATION_ID}/artists/${artistId}/schedule`
-  + `?startDate=${now}&endDate=${oneYear}`,
-  { headers: { "x-api-key": API_KEY } }
-);
+    // …after you’ve populated socials…  
 
-const calBtn = document.getElementById("calendar-btn");
-if (schedRes.ok) {
-  const { schedules = [] } = await schedRes.json();
-  console.log("Schedule data:", schedules);
-  if (schedules.length) {
-    const { startDateUtc, endDateUtc } = schedules[0];
-    calBtn.href = createGoogleCalLink(
-      `DJ ${artist.name} Live Set`,
-      startDateUtc,
-      endDateUtc
-    );
-    // ensure icon shows
-    calBtn.style.display = "inline-block";
-  } else {
-    calBtn.style.display = "none";
-  }
-} else {
-  calBtn.style.display = "none";
-}
+    // Next show → Google Calendar
+    const calBtn = document.getElementById("calendar-btn");
+    // 1) make sure it’s visible by default
+    calBtn.style.display = "inline-flex";
+    calBtn.style.opacity = "1";
+    calBtn.href = "#";
 
+    try {
+      const now     = new Date().toISOString();
+      const oneYear = new Date(Date.now() + 365*24*60*60*1000).toISOString();
+      const schedRes = await fetch(
+        `${BASE_URL}/station/${STATION_ID}/artists/${artistId}/schedule`
+          + `?startDate=${now}&endDate=${oneYear}`,
+        { headers: { "x-api-key": API_KEY } }
+      );
+      if (!schedRes.ok) throw new Error(`Schedule API ${schedRes.status}`);
+      const { schedules = [] } = await schedRes.json();
+      console.log("Schedule data:", schedules);
+
+      if (schedules.length) {
+        // 2) build the link if there *is* a show
+        const { startDateUtc, endDateUtc } = schedules[0];
+        calBtn.href = createGoogleCalLink(
+          `DJ ${artist.name} Live Set`,
+          startDateUtc,
+          endDateUtc
+        );
+      } else {
+        // 3) no show → grey out & disable
+        calBtn.style.opacity = "0.4";
+        calBtn.href = "#";
+      }
+    } catch (err) {
+      console.error("Schedule fetch error:", err);
+      // on error, also grey out
+      calBtn.style.opacity = "0.4";
+      calBtn.href = "#";
+    }
+    
     // Mixcloud archives (localStorage)
     const key = `${artistId}-mixcloud-urls`;
     const loadShows = () => {
