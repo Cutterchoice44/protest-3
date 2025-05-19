@@ -191,4 +191,18 @@ body {
   .mix-show iframe {
     height: 50px;
   }
+#calendar-btn {
+  padding: 0.5rem 1rem;
+  background: var(--teal);
+  color: var(--dark);
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  margin-top: 0.5rem;
 }
+#calendar-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
