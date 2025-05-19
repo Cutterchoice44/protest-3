@@ -102,6 +102,7 @@ html, body {
   border-bottom: 2px dashed var(--teal);
   margin: 0 10px;
 }
+/* Calendar button styling */
 #calendar-btn {
   padding: 0.5rem 1rem;
   background: var(--teal);
@@ -111,6 +112,8 @@ html, body {
   cursor: pointer;
   text-transform: uppercase;
   margin-top: 0.5rem;
+  /* Align to the right of the dashed line */
+  align-self: flex-end;
 }
 #calendar-btn:disabled {
   opacity: 0.5;
@@ -194,11 +197,6 @@ html, body {
   .socials-section h2,
   .mixes-section h2 {
     font-size: 1.5rem;
-  }
-
-  .reminder-section img {
-    width: 30px;
-    height: 30px;
   }
 
   .mix-show iframe {
