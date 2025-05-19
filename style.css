@@ -8,16 +8,19 @@
   margin: 0;
   padding: 0;
 }
-body {
-  background: var(--dark);
+/* Brick background for entire page */
+html, body {
+  background: url("https://i.imgur.com/JHiiSW4.png") center center / cover no-repeat fixed;
+  background-color: var(--dark);
   color: var(--light);
   font-family: Arial, sans-serif;
+  height: 100%;
 }
-
 /* Profile wrapper */
 .profile-wrapper {
   margin: 20px;
   border: 2px solid var(--teal);
+  background: rgba(0,0,0,0.7); /* optional overlay for readability */
 }
 
 /* Grid container */
@@ -88,7 +91,7 @@ body {
   text-decoration: none;
 }
 
-/* Reminder line + button */
+/* Reminder */
 .reminder-section {
   margin-top: auto;
   display: flex;
@@ -99,9 +102,19 @@ body {
   border-bottom: 2px dashed var(--teal);
   margin: 0 10px;
 }
-.reminder-section img {
-  width: 40px;
-  height: 40px;
+#calendar-btn {
+  padding: 0.5rem 1rem;
+  background: var(--teal);
+  color: var(--dark);
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  margin-top: 0.5rem;
+}
+#calendar-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* RIGHT: MIXES */
@@ -159,7 +172,7 @@ body {
   cursor: pointer;
 }
 
-/* ─── MOBILE RESPONSIVE ───────────────────────────────────────────────────── */
+/* MOBILE RESPONSIVE */
 @media (max-width: 768px) {
   .container {
     display: block;
@@ -191,18 +204,4 @@ body {
   .mix-show iframe {
     height: 50px;
   }
-#calendar-btn {
-  padding: 0.5rem 1rem;
-  background: var(--teal);
-  color: var(--dark);
-  border: none;
-  font-size: 1rem;
-  cursor: pointer;
-  text-transform: uppercase;
-  margin-top: 0.5rem;
 }
-#calendar-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
