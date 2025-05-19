@@ -8,37 +8,35 @@ const FALLBACK_ART = "https://i.imgur.com/qWOfxOS.png";
 // Replace only the profile-wrapper on errors
 function showNotFound() {
   const w = document.querySelector('.profile-wrapper');
-  if (w) w.innerHTML = `<p style="color:white;text-align:center;margin:2rem;">
-    Profile not found.
-  </p>`;
+  if (w) w.innerHTML = `
+    <p style="color:white; text-align:center; margin:2rem;">
+      Profile not found.
+    </p>`;
 }
 function showError() {
   const w = document.querySelector('.profile-wrapper');
-  if (w) w.innerHTML = `<p style="color:white;text-align:center;margin:2rem;">
-    Error loading profile.
-  </p>`;
+  if (w) w.innerHTML = `
+    <p style="color:white; text-align:center; margin:2rem;">
+      Error loading profile.
+    </p>`;
 }
 
-// Build a Google Calendar link
+// Build a Google Calendar link from UTC datetimes
 function createGoogleCalLink(title, startUtc, endUtc) {
   if (!startUtc || !endUtc) return "#";
   const fmt = dt => new Date(dt)
     .toISOString()
     .replace(/-|:|\.\d{3}/g, '');
-  return `https://www.google.com/calendar/render?action=TEMPLATE` +
-         `&text=${encodeURIComponent(title)}` +
-         `&dates=${fmt(startUtc)}/${fmt(endUtc)}`;
+  return `https://www.google.com/calendar/render?action=TEMPLATE`
+       + `&text=${encodeURIComponent(title)}`
+       + `&dates=${fmt(startUtc)}/${fmt(endUtc)}`;
 }
 
 async function initPage() {
   console.clear();
-  console.log("▶️ script_IND_DJ.js init");
   const params   = new URLSearchParams(window.location.search);
   const artistId = params.get("id");
-  if (!artistId) {
-    console.warn("No ?id= in URL");
-    return showNotFound();
-  }
+  if (!artistId) return showNotFound();
 
   try {
     // 1) Fetch the artist detail
@@ -51,64 +49,72 @@ async function initPage() {
       throw new Error(`Artist API ${res.status}`);
     }
     const payload = await res.json();
-
-    // 2) Unwrap whichever wrapper your API uses
+    // Unwrap whichever wrapper your API uses:
     const artist =
       payload.artist ||
       (payload.data && payload.data.artist) ||
       payload.data ||
       payload;
 
-    console.log("🏷️ artist record:", artist);
-
-    // 3) Only show DJs tagged "website"
+    // 2) Only show DJs tagged "website"
     const tags = Array.isArray(artist.tags)
       ? artist.tags.map(t => String(t).toLowerCase())
       : [];
     if (!tags.includes("website")) {
-      console.warn("Missing ‘website’ tag:", artist.tags);
       return showNotFound();
     }
 
-    // 4) Name
+    // 3) Populate Name
     document.getElementById("dj-name").textContent = artist.name || "";
 
-    // 5) Description / Bio —
-    //    Try every likely field in order
-    let desc = "";
-    const tryFields = [
-      "descriptionHtml",
-      "description",
-      "bioHtml",
-      "bio",
-      "aboutHtml",
-      "about"
-    ];
-    for (const f of tryFields) {
-      if (typeof artist[f] === "string" && artist[f].trim()) {
-        desc = artist[f];
-        console.log(`✔️ using ${f} for bio`);
+    // 4) Populate Description / Bio
+    const bioEl = document.getElementById("dj-bio");
+    let rawDesc = null;
+
+    // pick the first field that exists
+    for (const key of ["description", "descriptionHtml", "bio", "bioHtml", "about", "aboutHtml"]) {
+      if (artist[key] != null) {
+        rawDesc = artist[key];
         break;
       }
     }
-    // If it’s plain text, wrap paragraphs
-    if (desc && !/<[a-z][\s\S]*>/i.test(desc)) {
-      desc = desc
-        .split(/\r?\n+/)
-        .map(p => `<p>${p}</p>`)
+
+    let descHtml = "";
+    // If it’s a TipTap/ProseMirror JSON object:
+    if (rawDesc && typeof rawDesc === "object" && Array.isArray(rawDesc.content)) {
+      descHtml = rawDesc.content
+        .filter(node => node.type === "paragraph")
+        .map(para => {
+          const text = (para.content || []).map(t => t.text || "").join("");
+          return `<p>${text}</p>`;
+        })
         .join("");
     }
-    document.getElementById("dj-bio").innerHTML = desc || `<p>No bio available.</p>`;
+    // Otherwise if it’s a string:
+    else if (typeof rawDesc === "string") {
+      if (/<[a-z][\s\S]*>/i.test(rawDesc)) {
+        // Already HTML
+        descHtml = rawDesc;
+      } else {
+        // Plain text: wrap paragraphs
+        descHtml = rawDesc
+          .split(/\r?\n+/)
+          .map(p => `<p>${p}</p>`)
+          .join("");
+      }
+    }
 
-    // 6) Artwork
+    bioEl.innerHTML = descHtml || `<p>No bio available.</p>`;
+
+    // 5) Artwork
     const img = document.getElementById("dj-artwork");
-    img.src = artist.logo?.["512x512"] ||
-              artist.logo?.default    ||
-              artist.avatar          ||
-              FALLBACK_ART;
+    img.src = artist.logo?.["512x512"]
+           || artist.logo?.default
+           || artist.avatar
+           || FALLBACK_ART;
     img.alt = artist.name;
 
-    // 7) Social links
+    // 6) Social links
     const sl = document.getElementById("social-links");
     sl.innerHTML = "";
     for (const [plat, url] of Object.entries(artist.socials || {})) {
@@ -124,7 +130,7 @@ async function initPage() {
       sl.appendChild(li);
     }
 
-    // 8) Next show → Google Calendar
+    // 7) Next show → Calendar button
     const now     = new Date().toISOString();
     const oneYear = new Date(Date.now() + 365*24*60*60*1000).toISOString();
     const schedRes = await fetch(
@@ -149,7 +155,7 @@ async function initPage() {
       calBtn.style.display = "none";
     }
 
-    // 9) Mixcloud archives (per-artist localStorage)
+    // 8) Mixcloud archives (localStorage)
     const key = `${artistId}-mixcloud-urls`;
     function loadShows() {
       const list = document.getElementById("mixes-list");
@@ -175,6 +181,7 @@ async function initPage() {
       });
     }
     loadShows();
+
     document.getElementById("add-show-btn").onclick = () => {
       const pwd = prompt("Enter password to add a show:");
       if (pwd !== MIXCLOUD_PW) return alert("Incorrect password");
