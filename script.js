@@ -5,15 +5,13 @@ const STATION_ID   = "cutters-choice-radio";
 const MIXCLOUD_PW  = "cutters44";
 const FALLBACK_ART = "https://i.imgur.com/qWOfxOS.png";
 
-// Show “not found” and stop
+// 1) Helpers to show errors
 function showNotFound() {
   document.body.innerHTML = `
     <p style="color:white; text-align:center; margin-top:2rem;">
       Profile not found.
     </p>`;
 }
-
-// Show generic load error
 function showError() {
   document.body.innerHTML = `
     <p style="color:white; text-align:center; margin-top:2rem;">
@@ -21,7 +19,7 @@ function showError() {
     </p>`;
 }
 
-// Build a Google Calendar link
+// 2) Build Google Calendar link
 function createGoogleCalLink(title, startUtc, endUtc) {
   if (!startUtc || !endUtc) return "#";
   const fmt = dt => new Date(dt)
@@ -33,51 +31,63 @@ function createGoogleCalLink(title, startUtc, endUtc) {
 }
 
 async function initPage() {
-  const params   = new URLSearchParams(window.location.search);
+  // 3) Grab the ?id= from the URL
+  const params = new URLSearchParams(window.location.search);
   const artistId = params.get("id");
   if (!artistId) return showNotFound();
 
   try {
-    // 1) Fetch artist record
-    const res = await fetch(
-      `${BASE_URL}/station/${STATION_ID}/artists/${artistId}`,
+    // 4) Fetch **all** artists and find ours
+    const listRes = await fetch(
+      `${BASE_URL}/station/${STATION_ID}/artists`,
       { headers: { "x-api-key": API_KEY } }
     );
-    if (!res.ok) {
-      if (res.status === 404) return showNotFound();
-      throw new Error(`Artist API returned ${res.status}`);
-    }
-    const data = await res.json();
-    if (!data.success || !data.artist) return showNotFound();
-    const artist = data.artist;
+    if (!listRes.ok) throw new Error(`Artists list API returned ${listRes.status}`);
+    const listData = await listRes.json();
+    const artists = listData.artists || [];
+    const artist  = artists.find(a => a.id === artistId);
+    if (!artist) return showNotFound();
 
-    // 2) Only load if tagged "website"
-    const tags = Array.isArray(artist.tags)
-      ? artist.tags.map(t => String(t).toLowerCase())
-      : [];
-    if (!tags.includes("website")) {
+    // 5) Only allow DJs tagged "website"
+    if (!Array.isArray(artist.tags) || !artist.tags.includes("website")) {
       return showNotFound();
     }
 
-    // 3) Populate Name & Bio
+    // 6) (Optional) Re-fetch detail to get full bio/socials, if you need it
+    //     If listing already includes bioHtml & socials, you can skip this
+    try {
+      const detRes = await fetch(
+        `${BASE_URL}/station/${STATION_ID}/artists/${artistId}`,
+        { headers: { "x-api-key": API_KEY } }
+      );
+      if (detRes.ok) {
+        const detData = await detRes.json();
+        if (detData.success && detData.artist) {
+          Object.assign(artist, detData.artist);
+        }
+      }
+    } catch(_) {
+      // ignore detail-fetch failures; listing data will still show
+    }
+
+    // 7) Populate Name & Bio
     document.getElementById("dj-name").textContent = artist.name || "";
     const bioEl = document.getElementById("dj-bio");
-    if (artist.description && typeof artist.description === "object") {
-      // TipTap JSON content? Fallback to raw JSON string
-      bioEl.innerHTML = `<p>${JSON.stringify(artist.description)}</p>`;
+    if (artist.bioHtml) {
+      bioEl.innerHTML = artist.bioHtml;
     } else {
       bioEl.innerHTML = `<p>${artist.bio || ""}</p>`;
     }
 
-    // 4) Artwork
+    // 8) Artwork
     const artEl = document.getElementById("dj-artwork");
     artEl.src = artist.logo?.["512x512"]
-             || artist.logo?.default
-             || artist.avatar
-             || FALLBACK_ART;
+              || artist.logo?.default
+              || artist.avatar
+              || FALLBACK_ART;
     artEl.alt = artist.name;
 
-    // 5) Social links
+    // 9) Social links
     const sl = document.getElementById("social-links");
     sl.innerHTML = "";
     for (const [plat, url] of Object.entries(artist.socials || {})) {
@@ -90,7 +100,7 @@ async function initPage() {
       sl.appendChild(li);
     }
 
-    // 6) Next show → calendar button
+    // 10) Next show → Google Calendar
     const now     = new Date().toISOString();
     const oneYear = new Date(Date.now() + 365*24*60*60*1000).toISOString();
     const schedRes = await fetch(
@@ -116,7 +126,7 @@ async function initPage() {
       calBtn.style.display = "none";
     }
 
-    // 7) Mixcloud archives (per-artist localStorage)
+    // 11) Mixcloud archives (per-artist localStorage)
     const storageKey = `${artistId}-mixcloud-urls`;
     function loadShows() {
       const list = document.getElementById("mixes-list");
@@ -144,7 +154,7 @@ async function initPage() {
     }
     loadShows();
 
-    // Add-show button
+    // 12) “Add Show” button
     document.getElementById("add-show-btn").onclick = () => {
       const pwd = prompt("Enter password to add a show:");
       if (pwd !== MIXCLOUD_PW) return alert("Incorrect password");
