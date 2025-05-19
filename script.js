@@ -5,89 +5,89 @@ const STATION_ID   = "cutters-choice-radio";
 const MIXCLOUD_PW  = "cutters44";
 const FALLBACK_ART = "https://i.imgur.com/qWOfxOS.png";
 
-// 1) Helpers to show errors
+// Replace only the profile wrapper with an error message
 function showNotFound() {
-  document.body.innerHTML = `
-    <p style="color:white; text-align:center; margin-top:2rem;">
-      Profile not found.
-    </p>`;
+  const wrapper = document.querySelector('.profile-wrapper');
+  if (wrapper) {
+    wrapper.innerHTML = `
+      <p style="color:white; text-align:center; margin:2rem;">
+        Profile not found.
+      </p>`;
+  }
 }
 function showError() {
-  document.body.innerHTML = `
-    <p style="color:white; text-align:center; margin-top:2rem;">
-      Error loading profile.
-    </p>`;
+  const wrapper = document.querySelector('.profile-wrapper');
+  if (wrapper) {
+    wrapper.innerHTML = `
+      <p style="color:white; text-align:center; margin:2rem;">
+        Error loading profile.
+      </p>`;
+  }
 }
 
-// 2) Build Google Calendar link
+// Build a Google Calendar link from UTC datetimes
 function createGoogleCalLink(title, startUtc, endUtc) {
   if (!startUtc || !endUtc) return "#";
   const fmt = dt => new Date(dt)
     .toISOString()
     .replace(/-|:|\.\d{3}/g, '');
-  return `https://www.google.com/calendar/render?action=TEMPLATE`
-       + `&text=${encodeURIComponent(title)}`
-       + `&dates=${fmt(startUtc)}/${fmt(endUtc)}`;
+  return [
+    "https://www.google.com/calendar/render?action=TEMPLATE",
+    "&text=" + encodeURIComponent(title),
+    "&dates=" + fmt(startUtc) + "/" + fmt(endUtc)
+  ].join("");
 }
 
 async function initPage() {
-  // 3) Grab the ?id= from the URL
+  console.log("▶️ script_IND_DJ.js init");  // debug
   const params = new URLSearchParams(window.location.search);
   const artistId = params.get("id");
-  if (!artistId) return showNotFound();
+  if (!artistId) {
+    console.warn("No ?id= in URL");
+    return showNotFound();
+  }
+  console.log("Looking up artistId =", artistId);
 
   try {
-    // 4) Fetch **all** artists and find ours
+    // 1) Fetch all artists, then find ours
     const listRes = await fetch(
       `${BASE_URL}/station/${STATION_ID}/artists`,
       { headers: { "x-api-key": API_KEY } }
     );
-    if (!listRes.ok) throw new Error(`Artists list API returned ${listRes.status}`);
+    if (!listRes.ok) throw new Error(`List API ${listRes.status}`);
     const listData = await listRes.json();
     const artists = listData.artists || [];
     const artist  = artists.find(a => a.id === artistId);
-    if (!artist) return showNotFound();
-
-    // 5) Only allow DJs tagged "website"
-    if (!Array.isArray(artist.tags) || !artist.tags.includes("website")) {
+    if (!artist) {
+      console.warn("Artist not in list");
       return showNotFound();
     }
 
-    // 6) (Optional) Re-fetch detail to get full bio/socials, if you need it
-    //     If listing already includes bioHtml & socials, you can skip this
-    try {
-      const detRes = await fetch(
-        `${BASE_URL}/station/${STATION_ID}/artists/${artistId}`,
-        { headers: { "x-api-key": API_KEY } }
-      );
-      if (detRes.ok) {
-        const detData = await detRes.json();
-        if (detData.success && detData.artist) {
-          Object.assign(artist, detData.artist);
-        }
-      }
-    } catch(_) {
-      // ignore detail-fetch failures; listing data will still show
+    // 2) Only show DJs tagged "website"
+    if (!Array.isArray(artist.tags) || !artist.tags.map(t=>t.toLowerCase()).includes("website")) {
+      console.warn("Missing website tag:", artist.tags);
+      return showNotFound();
     }
+    console.log("✅ Found artist:", artist.name);
 
-    // 7) Populate Name & Bio
+    // 3) Populate Name & Bio
     document.getElementById("dj-name").textContent = artist.name || "";
     const bioEl = document.getElementById("dj-bio");
     if (artist.bioHtml) {
       bioEl.innerHTML = artist.bioHtml;
     } else {
-      bioEl.innerHTML = `<p>${artist.bio || ""}</p>`;
+      bioEl.innerHTML = `<p>${artist.bio||""}</p>`;
     }
 
-    // 8) Artwork
+    // 4) Artwork
     const artEl = document.getElementById("dj-artwork");
-    artEl.src = artist.logo?.["512x512"]
-              || artist.logo?.default
-              || artist.avatar
-              || FALLBACK_ART;
+    artEl.src = artist.logo?.["512x512"] 
+             || artist.logo?.default 
+             || artist.avatar 
+             || FALLBACK_ART;
     artEl.alt = artist.name;
 
-    // 9) Social links
+    // 5) Social links
     const sl = document.getElementById("social-links");
     sl.innerHTML = "";
     for (const [plat, url] of Object.entries(artist.socials || {})) {
@@ -100,7 +100,7 @@ async function initPage() {
       sl.appendChild(li);
     }
 
-    // 10) Next show → Google Calendar
+    // 6) Next show → calendar
     const now     = new Date().toISOString();
     const oneYear = new Date(Date.now() + 365*24*60*60*1000).toISOString();
     const schedRes = await fetch(
@@ -110,8 +110,7 @@ async function initPage() {
     );
     const calBtn = document.getElementById("calendar-btn");
     if (schedRes.ok) {
-      const schedData = await schedRes.json();
-      const schedules = schedData.schedules || [];
+      const { schedules = [] } = await schedRes.json();
       if (schedules.length) {
         const { startDateUtc, endDateUtc } = schedules[0];
         calBtn.href = createGoogleCalLink(
@@ -126,42 +125,42 @@ async function initPage() {
       calBtn.style.display = "none";
     }
 
-    // 11) Mixcloud archives (per-artist localStorage)
+    // 7) Mixcloud archives (per‐artist localStorage)
     const storageKey = `${artistId}-mixcloud-urls`;
     function loadShows() {
       const list = document.getElementById("mixes-list");
       list.innerHTML = "";
-      (JSON.parse(localStorage.getItem(storageKey)) || [])
-      .forEach(url => {
-        const div = document.createElement("div");
-        div.className = "mix-show";
-        div.innerHTML = `
-          <iframe
-            src="https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=1&feed=${encodeURIComponent(url)}"
-            allow="autoplay"></iframe>
-          <button data-url="${url}">Remove show</button>
-        `;
-        div.querySelector("button").onclick = () => {
-          const arr = JSON.parse(localStorage.getItem(storageKey)) || [];
-          localStorage.setItem(
-            storageKey,
-            JSON.stringify(arr.filter(u => u !== url))
-          );
-          loadShows();
-        };
-        list.appendChild(div);
-      });
+      (JSON.parse(localStorage.getItem(storageKey))||[])
+        .forEach(url => {
+          const div = document.createElement("div");
+          div.className = "mix-show";
+          div.innerHTML = `
+            <iframe
+              src="https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=1&feed=${encodeURIComponent(url)}"
+              allow="autoplay"></iframe>
+            <button data-url="${url}">Remove show</button>
+          `;
+          div.querySelector("button").onclick = () => {
+            const arr = JSON.parse(localStorage.getItem(storageKey))||[];
+            localStorage.setItem(
+              storageKey,
+              JSON.stringify(arr.filter(u => u !== url))
+            );
+            loadShows();
+          };
+          list.appendChild(div);
+        });
     }
     loadShows();
 
-    // 12) “Add Show” button
+    // Add-show button
     document.getElementById("add-show-btn").onclick = () => {
       const pwd = prompt("Enter password to add a show:");
       if (pwd !== MIXCLOUD_PW) return alert("Incorrect password");
       const input = document.getElementById("mixcloud-url-input");
       const url   = input.value.trim();
       if (!url) return;
-      const arr = JSON.parse(localStorage.getItem(storageKey)) || [];
+      const arr = JSON.parse(localStorage.getItem(storageKey))||[];
       arr.push(url);
       localStorage.setItem(storageKey, JSON.stringify(arr));
       input.value = "";
