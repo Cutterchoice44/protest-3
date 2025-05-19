@@ -128,28 +128,32 @@ async function initPage() {
     }
 
     // Next show → Google Calendar
-  const schedRes = await fetch(/* … */);
-const calBtn = document.getElementById("calendar-btn");
+// Next show → Google Calendar
+const now     = new Date().toISOString();
+const oneYear = new Date(Date.now() + 365*24*60*60*1000).toISOString();
+const schedRes = await fetch(
+  `${BASE_URL}/station/${STATION_ID}/artists/${artistId}/schedule`
+  + `?startDate=${now}&endDate=${oneYear}`,
+  { headers: { "x-api-key": API_KEY } }
+);
 
+const calBtn = document.getElementById("calendar-btn");
 if (schedRes.ok) {
   const { schedules = [] } = await schedRes.json();
   console.log("Schedule data:", schedules);
   if (schedules.length) {
-    // We have a show—build the link…
     const { startDateUtc, endDateUtc } = schedules[0];
     calBtn.href = createGoogleCalLink(
       `DJ ${artist.name} Live Set`,
       startDateUtc,
       endDateUtc
     );
-    // …and make sure the icon is visible:
+    // ensure icon shows
     calBtn.style.display = "inline-block";
   } else {
-    // No upcoming show
     calBtn.style.display = "none";
   }
 } else {
-  // API error
   calBtn.style.display = "none";
 }
 
